@@ -245,3 +245,4 @@ $RECYCLE.BIN/
 # End of https://www.toptal.com/developers/gitignore/api/python,go,linux,macos,windows,vagrant
 
 build.bmv2
+*.pcap
