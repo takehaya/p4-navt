@@ -26,7 +26,6 @@ struct IngressMetadata {
     vlan_id_t vlan_id; // bit<12>
     PortType port_type;
     EthernetType etherType;
-    nexthop_id_t nexthop_id;
 }
 // Generic egress metadata (architecture independent)
 struct EgressMetadata {

@@ -6,6 +6,7 @@
 #include "port.p4"
 #include "portfwd.p4"
 #include "l2.p4"
+#include "navt.p4"
 
 // CONTROL: INGRESS -------------------------------------------------------
 
@@ -16,15 +17,14 @@ control SwitchIngress(
 
     PortMap() portmap;
     L2Fwd(1024) l2fwd;
-    PortFwd() portfwd;
+    Navt() navt;
+    // PortFwd() portfwd;
 
     apply {
         mark_to_drop(st_md);
         portmap.apply(hdr, user_md.ig_md, st_md); // set vlan_id from port_type
-
+        navt.apply(hdr.ether.srcAddr, hdr.ether.dstAddr, hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, user_md.ig_md, st_md);
         l2fwd.apply(hdr.ether.dstAddr, hdr.ether.srcAddr, user_md.ig_md, st_md);
-
-        portfwd.apply(st_md.ingress_port, st_md.egress_spec, st_md.mcast_grp);
     }
 }
 
@@ -35,7 +35,7 @@ control SwitchEgress(
             inout UserMetadata user_md,
             inout standard_metadata_t st_md) {
 
-    action drop() { // indirection to support mltiple platform
+    action drop() {
         mark_to_drop(st_md);
     }
 
@@ -109,7 +109,7 @@ V1Switch(SwitchParser(),
          NoSwitchVerifyChecksum(),
          SwitchIngress(),
          SwitchEgress(),
-         //SwitchComputeChecksum(),
-         NoSwitchComputeChecksum(),
+         SwitchComputeChecksum(),
+        //  NoSwitchComputeChecksum(),
          SwitchDeparser()
 ) main;

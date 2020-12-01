@@ -6,9 +6,9 @@ control L2Fwd(
     (bit<32> table_size_dmac) {
 
     action smac_miss() {
-        #ifdef _V1_MODEL_P4_
-        digest<MacLearnDigest_t>(1,{ether_src_addr, st_md.ingress_port, ig_md.vlan_id});
-        #endif /* _V1_MODEL_P4_ */
+        // #ifdef _V1_MODEL_P4_
+        // digest<MacLearnDigest_t>(1,{ether_src_addr, st_md.ingress_port});
+        // #endif /* _V1_MODEL_P4_ */
     }
     action smac_hit() {
         NoAction();
@@ -17,7 +17,6 @@ control L2Fwd(
         key = {
             ether_src_addr : exact;
             st_md.ingress_port : exact;
-            ig_md.vlan_id : exact;
         }
         actions = {
             smac_miss;
@@ -26,7 +25,6 @@ control L2Fwd(
         const default_action = smac_miss;
     }
     action dmac_miss() {
-        st_md.mcast_grp = (bit<16>)ig_md.vlan_id;
         ig_md.flood = 1;
     }
     action dmac_hit(PortId_t port) {
@@ -36,7 +34,6 @@ control L2Fwd(
     table dmac {
         key = {
             ether_dst_addr : exact;
-            ig_md.vlan_id : exact;
         }
         actions = {
             dmac_miss;
