@@ -33,7 +33,7 @@ run () {
 connect_p4 () {
     simple_switch ./build.bmv2/switch.json \
     -i 1@veth-NAVT-NERT -i 2@br0-NAVT-GW \
-    --log-console -L debug &
+    --log-console -L trace &
 }
 
 
@@ -72,20 +72,21 @@ create_external(){
     run ip netns exec NOC ip route add default via 172.31.50.254
 
     # NERT configuration
-    run ip netns exec NERT ip link set addr 02:00:00:00:00:ff dev veth-NERT-NOC
     run ip netns exec NERT ip addr add 172.31.50.254/24 dev veth-NERT-NOC
     run ip netns exec NERT ip addr add 172.27.1.1/24 dev veth-NERT-NAVT
 
     run ip netns exec NERT ip link set veth-NERT-NOC up
     run ip netns exec NERT ip link set veth-NERT-NAVT up
+    run ip netns exec NERT ip link set lo up
 
+    run ip netns exec NERT ip link set addr 02:03:04:05:06:01 dev veth-NERT-NAVT
     run ip netns exec NERT ip neigh add 172.27.1.254 lladdr 02:03:04:05:06:fe dev veth-NERT-NAVT
-    # run ip netns exec NERT ip neigh add 172.26.0.2 lladdr 02:00:00:00:00:02 dev veth-NERT-NAVT
-    # run ip netns exec NERT ip route add 10.1.0.0/16 via 172.26.0.1
+    run ip netns exec NERT ip route add 10.1.0.0/16 via 172.27.1.254 dev veth-NERT-NAVT
+    run ip netns exec NERT ip route add 10.2.0.0/16 via 172.27.1.254 dev veth-NERT-NAVT
 
     # sysctl for NERT
     run ip netns exec NERT sysctl net.ipv4.ip_forward=1
-    run ip netns exec NERT ip link set veth-NERT-NAVT
+    run ip netns exec NERT sysctl net.ipv4.conf.all.rp_filter=0
 }
 
 create_navt(){
@@ -104,16 +105,10 @@ create_navt(){
     run ip link set br0-NAVT-AG up
     run ip link set br0-NAVT-BG up
     run ip link set br0 up
-    run ip addr add 172.26.0.254/16 dev br0-NAVT-GW
-    # run ip neigh add 172.26.0.254 lladdr 02:00:00:00:00:ff dev br0
-    # run ip netns exec AG ip link set addr 02:00:00:00:00:ff dev br0-NAVT-GW
-# ip netns exec AC ping 172.26.0.254
-
-    # run ip addr add 172.26.0.1/24 broadcast 192.168.10.255 label br0 dev br0
-
-    # sudo ip link add veth-NAVT-IRT type veth peer name veth-IRT-NAVT
-    # sudo ip link set dev veth-NAVT-IRT master br0
-    # run ip link set dev veth-NAVT-IRT up
+    run ip addr add 172.26.2.254/24 dev br0-NAVT-GW
+    run ip addr add 172.27.1.254/24 dev veth-NAVT-NERT
+    run ip link set addr 02:03:04:05:06:fe dev br0-NAVT-GW
+    run ip link set addr 02:03:04:05:06:fe dev veth-NAVT-NERT
 
     run sysctl net.ipv4.ip_forward=1
 }
@@ -139,9 +134,6 @@ create_internal(){
     run ip link add veth-AG-AC type veth peer name veth-AC-AG
     run ip link add veth-BG-BC type veth peer name veth-BC-BG
 
-    # run ip link set br0-AG-NAVT.100 netns AG
-    # run ip link set br0-BG-NAVT.200 netns BG
-
     run ip link set veth-AG-AC netns AG
     run ip link set veth-AC-AG netns AC
     run ip link set veth-BG-BC netns BG
@@ -152,23 +144,28 @@ create_internal(){
     run ip netns exec BG sysctl net.ipv4.ip_forward=1
 
     # settings for A gateway
-    run ip netns exec AG ip link set addr 02:00:00:00:00:01 dev br0-AG-NAVT.100
+    run ip netns exec AG ip link set addr 02:03:04:05:06:11 dev br0-AG-NAVT.100
+
     run ip netns exec AG ip addr add 172.26.2.1/24 dev br0-AG-NAVT.100
     run ip netns exec AG ip addr add 192.168.0.254/24 dev veth-AG-AC
 
     run ip netns exec AG ip link set br0-AG-NAVT.100 up
     run ip netns exec AG ip link set veth-AG-AC up
     run ip netns exec AG ip route add default via 172.26.2.254
+
+    # todo remove
     run ip netns exec AG ip neigh add 172.26.2.254 lladdr 02:03:04:05:06:fe dev br0-AG-NAVT.100
 
    # settings for B gateway
-    run ip netns exec BG ip link set addr 02:00:00:00:00:02 dev br0-BG-NAVT.200
+    run ip netns exec BG ip link set addr 02:03:04:05:06:22 dev br0-BG-NAVT.200
     run ip netns exec BG ip addr add 172.26.2.2/24 dev br0-BG-NAVT.200
     run ip netns exec BG ip addr add 192.168.0.254/24 dev veth-BG-BC
 
     run ip netns exec BG ip link set br0-BG-NAVT.200 up
     run ip netns exec BG ip link set veth-BG-BC up
     run ip netns exec BG ip route add default via 172.26.2.254
+
+    # todo remove
     run ip netns exec BG ip neigh add 172.26.2.254 lladdr 02:03:04:05:06:fe dev br0-BG-NAVT.200
 
    # settings for A Client
@@ -232,8 +229,8 @@ destroy_network () {
 }
 
 stop () {
-    destroy_network
     destroy_p4
+    destroy_network
 }
 
 trap stop 0 1 2 3 13 14 15
