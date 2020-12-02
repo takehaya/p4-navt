@@ -246,3 +246,4 @@ $RECYCLE.BIN/
 
 build.bmv2
 *.pcap
+bin/
