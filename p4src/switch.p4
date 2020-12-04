@@ -18,13 +18,52 @@ control SwitchIngress(
     PortMap() portmap;
     L2Fwd(1024) l2fwd;
     Navt() navt;
-    // PortFwd() portfwd;
+    action send_to_host() {
+        clone3(CloneType.I2E, I2E_CLONE_SESSION_ID, {st_md, user_md});
+    }
+
+    action localmac_hit() {
+        NoAction();
+    }
+    table localmac {
+        key = {
+            hdr.ether.dstAddr: exact;
+        }
+        actions = {
+            localmac_hit;
+            send_to_host;
+        }
+    }
 
     apply {
+        if (st_md.ingress_port == CPU_PORT) {
+            user_md.ig_md.vlan_id = hdr.packet_out.vlan_id;
+            if (hdr.packet_out.vlan_id != 0){
+                user_md.ig_md.to_tagging = 1;
+            }
+            hdr.packet_out.setInvalid();
+        }
+
         mark_to_drop(st_md);
         portmap.apply(hdr, user_md.ig_md, st_md); // set vlan_id from port_type
-        navt.apply(hdr.ether.srcAddr, hdr.ether.dstAddr, hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, user_md.ig_md, st_md);
-        l2fwd.apply(hdr.ether.dstAddr, hdr.ether.srcAddr, user_md.ig_md, st_md);
+
+        if (st_md.ingress_port != CPU_PORT) {
+            switch (localmac.apply().action_run) {
+                localmac_hit: {
+                    navt.apply(
+                        hdr.ether.srcAddr,
+                        hdr.ether.dstAddr,
+                        hdr.ipv4.srcAddr,
+                        hdr.ipv4.dstAddr,
+                        user_md.ig_md,
+                        st_md
+                    );
+                }
+            }
+        }
+        if (st_md.egress_spec != CPU_PORT) {
+            l2fwd.apply(hdr.ether.dstAddr, hdr.ether.srcAddr, user_md.ig_md, st_md);
+        }
     }
 }
 
@@ -42,6 +81,20 @@ control SwitchEgress(
     PortMapEgress() portmap_egress;
 
     apply {
+        if(st_md.egress_port == CPU_PORT){
+            hdr.packet_in.setValid();
+            hdr.packet_in.vlan_id = user_md.ig_md.vlan_id;
+            hdr.ether.etherType = user_md.ig_md.etherType;
+            if (IS_I2E_CLONE(st_md) || IS_E2E_CLONE(st_md)) {
+                hdr.packet_in.is_clone = 1;
+            } else {
+                hdr.packet_in.is_clone = 0;
+            }
+            // vtap is unable to receive vlan packets.
+            // So i do decap.
+            user_md.ig_md.to_tagging = 0;
+        }
+
         // drop flood packet going back to incoming port
         if(st_md.ingress_port == st_md.egress_port && user_md.ig_md.flood == 1) {
             drop();

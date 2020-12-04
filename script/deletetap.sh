@@ -1,0 +1,16 @@
+sudo ip link del tap1500
+sudo ip link del tap1400
+sudo ip link del tap1300
+sudo ip link del tap1200
+sudo ip link del tap1100
+sudo ip link del tap1000
+sudo ip link del tap900
+sudo ip link del tap800
+sudo ip link del tap700
+sudo ip link del tap600
+sudo ip link del tap500
+sudo ip link del tap400
+sudo ip link del tap300
+sudo ip link del tap200
+sudo ip link del tap100
+sudo ip link del tap0

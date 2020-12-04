@@ -9,7 +9,6 @@ control PortMap(
             ig_md.vlan_dei = hdr.vlan_tag.dei;
             ig_md.vlan_id = hdr.vlan_tag.vid;
             ig_md.etherType = hdr.vlan_tag.etherType;
-            ig_md.is_tagged = 1;
         } else {
             ig_md.etherType = hdr.ether.etherType;
         }
@@ -38,10 +37,10 @@ control PortMapEgress(
     }
 
     apply {
-        if (user_md.ig_md.is_tagged == 1){
-            vlan_untagged();
-        }else{
+        if (user_md.ig_md.to_tagging == 1){
             vlan_tagged();
+        }else{
+            vlan_untagged();
         }
     }
 }

@@ -35,9 +35,9 @@
 # mc_node_associate 200 3
 # mc_node_associate 200 5
 
-table_add dmac dmac_hit 0x020304050601 => 1
-table_add dmac dmac_hit 0x020304050611 => 2
-table_add dmac dmac_hit 0x020304050622 => 2
+table_add dmac dmac_hit 0x020304050601 0 => 1
+table_add dmac dmac_hit 0x020304050611 100 => 2
+table_add dmac dmac_hit 0x020304050622 200 => 2
 # table_add dmac dmac_hit 0x020304050612 100 => 3
 # table_add dmac dmac_hit 0x020304050621 200 => 4
 # table_add dmac dmac_hit 0x020304050622 200 => 5

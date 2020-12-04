@@ -31,10 +31,11 @@ control Navt(
                     ether_dst_addr = 0x020304050622;
                     ether_src_addr = 0x0203040506fe;
                 }
+                ig_md.to_tagging = 1;
             } else {
                 // to internal nat
                 ip_src_addr[31:24] = 10;
-                if (ig_md.vlan_id ==100){
+                if (ig_md.vlan_id == 100){
                     ip_src_addr[23:16] = 1;
                 }else if(ig_md.vlan_id == 200){
                     ip_src_addr[23:16] = 2;
@@ -44,6 +45,8 @@ control Navt(
                 // ip_src_addr[23:16] = (bit<8>)(ig_md.vlan_id>>4);
                 ether_dst_addr = 0x020304050601;
                 ether_src_addr = 0x0203040506fe;
+                ig_md.vlan_id = 0; // port vlan
+                ig_md.to_tagging = 0;
             }
         }
     }

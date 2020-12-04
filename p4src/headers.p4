@@ -70,6 +70,20 @@ header ICMP_h {
     // implement correctly when supporting ICMP
 }
 
+@controller_header("packet_out")
+header PacketOutHeader {
+    vlan_id_t vlan_id;//12
+    bit<4> padding;
+}
+
+@controller_header("packet_in")
+header PacketInHeader {
+    bit<32> vrf; // not use
+    vlan_id_t vlan_id;//12
+    bit<1> is_clone;
+    bit<3> padding;
+}
+
 #include "structs.p4" // include structs including parsed headers
 
 #endif // _HEADERS_

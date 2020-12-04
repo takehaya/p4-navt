@@ -1,16 +1,5 @@
 #!/bin/bash
 
-# -- veth with no tagged vlan --
-# VLAN100, 200:
-#  veth1: 10.0.0.1/16, 02:03:04:05:06:01
-# -- veth with tagged vlan --
-# VLAN100:
-#  veth10.100: 192.168.0.1/24, 02:03:04:05:06:11
-#  veth11.100: 192.168.0.2/24, 02:03:04:05:06:12
-# VLAN200:
-#  veth21.200: 192.168.0.1/24, 02:03:04:05:06:21
-#  veth22.200: 192.168.0.2/24, 02:03:04:05:06:22
-
 set -eu
 
 if [[ $(id -u) -ne 0 ]] ; then
@@ -23,29 +12,28 @@ run () {
     "$@" || exit 1
 }
 
-# connect_p4 () {
-#     simple_switch_grpc --no-p4 -i 1@vtap1 \
-#     -i 2@vtap10 -i 3@vtap11 \
-#     -i 4@vtap21 -i 5@vtap22 \
-#     --log-console -L debug -- --grpc-server-addr 0.0.0.0:50051 --cpu-port 255 &
-# }
-
 connect_p4 () {
-    simple_switch ./build.bmv2/switch.json \
+    simple_switch_grpc --no-p4 \
     -i 1@veth-NAVT-NERT -i 2@br0-NAVT-GW \
-    --log-console -L trace &
+    --log-console -L trace -- --grpc-server-addr 0.0.0.0:50051 --cpu-port 255 &
 }
 
-
-# destroy_p4(){
-#     echo "destroy p4"
-#     ps aux | grep simple_switch_grpc | grep -v grep | awk '{ print "kill -9", $2 }' | sh
+# connect_p4 () {
+#     simple_switch ./build.bmv2/switch.json \
+#     -i 1@veth-NAVT-NERT -i 2@br0-NAVT-GW \
+#     --log-console -L trace &
 # }
+
 
 destroy_p4(){
     echo "destroy p4"
-    ps aux | grep simple_switch | grep -v grep | awk '{ print "kill -9", $2 }' | sh
+    ps aux | grep simple_switch_grpc | grep -v grep | awk '{ print "kill -9", $2 }' | sh
 }
+
+# destroy_p4(){
+#     echo "destroy p4"
+#     ps aux | grep simple_switch | grep -v grep | awk '{ print "kill -9", $2 }' | sh
+# }
 
 create_network () {
     create_external
@@ -80,7 +68,7 @@ create_external(){
     run ip netns exec NERT ip link set lo up
 
     run ip netns exec NERT ip link set addr 02:03:04:05:06:01 dev veth-NERT-NAVT
-    run ip netns exec NERT ip neigh add 172.27.1.254 lladdr 02:03:04:05:06:fe dev veth-NERT-NAVT
+    # run ip netns exec NERT ip neigh add 172.27.1.254 lladdr 02:03:04:05:06:fe dev veth-NERT-NAVT
     run ip netns exec NERT ip route add 10.1.0.0/16 via 172.27.1.254 dev veth-NERT-NAVT
     run ip netns exec NERT ip route add 10.2.0.0/16 via 172.27.1.254 dev veth-NERT-NAVT
 
@@ -105,8 +93,8 @@ create_navt(){
     run ip link set br0-NAVT-AG up
     run ip link set br0-NAVT-BG up
     run ip link set br0 up
-    run ip addr add 172.26.2.254/24 dev br0-NAVT-GW
-    run ip addr add 172.27.1.254/24 dev veth-NAVT-NERT
+    # run ip addr add 172.26.2.254/24 dev br0-NAVT-GW
+    # run ip addr add 172.27.1.254/24 dev veth-NAVT-NERT
     run ip link set addr 02:03:04:05:06:fe dev br0-NAVT-GW
     run ip link set addr 02:03:04:05:06:fe dev veth-NAVT-NERT
 
@@ -154,7 +142,7 @@ create_internal(){
     run ip netns exec AG ip route add default via 172.26.2.254
 
     # todo remove
-    run ip netns exec AG ip neigh add 172.26.2.254 lladdr 02:03:04:05:06:fe dev br0-AG-NAVT.100
+    # run ip netns exec AG ip neigh add 172.26.2.254 lladdr 02:03:04:05:06:fe dev br0-AG-NAVT.100
 
    # settings for B gateway
     run ip netns exec BG ip link set addr 02:03:04:05:06:22 dev br0-BG-NAVT.200
@@ -166,7 +154,7 @@ create_internal(){
     run ip netns exec BG ip route add default via 172.26.2.254
 
     # todo remove
-    run ip netns exec BG ip neigh add 172.26.2.254 lladdr 02:03:04:05:06:fe dev br0-BG-NAVT.200
+    # run ip netns exec BG ip neigh add 172.26.2.254 lladdr 02:03:04:05:06:fe dev br0-BG-NAVT.200
 
    # settings for A Client
     run ip netns exec AC ip addr add 192.168.0.1/24 dev veth-AC-AG
@@ -177,6 +165,14 @@ create_internal(){
     run ip netns exec BC ip addr add 192.168.0.1/24 dev veth-BC-BG
     run ip netns exec BC ip link set veth-BC-BG up
     run ip netns exec BC ip route add default via 192.168.0.254
+
+    run ip netns exec BC sysctl -w net.ipv6.conf.all.disable_ipv6=1
+    run ip netns exec BG sysctl -w net.ipv6.conf.all.disable_ipv6=1
+    run ip netns exec AC sysctl -w net.ipv6.conf.all.disable_ipv6=1
+    run ip netns exec AG sysctl -w net.ipv6.conf.all.disable_ipv6=1
+    run ip netns exec NOC sysctl -w net.ipv6.conf.all.disable_ipv6=1
+    run ip netns exec NERT sysctl -w net.ipv6.conf.all.disable_ipv6=1
+    run sysctl -w net.ipv6.conf.all.disable_ipv6=1
 
     # # enable promiscuous mode
     # sudo ip link set enp0s8 promisc on

@@ -18,7 +18,7 @@ open configuer
 simple_switch_CLI
 
 # input mac entry
-table_add dmac dmac_hit 0x020304050601 => 1
-table_add dmac dmac_hit 0x020304050611 => 2
-table_add dmac dmac_hit 0x020304050622 => 2
+table_add dmac dmac_hit 0x020304050601 0 => 1
+table_add dmac dmac_hit 0x020304050611 100 => 2
+table_add dmac dmac_hit 0x020304050622 200 => 2
 ```

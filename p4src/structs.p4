@@ -2,6 +2,8 @@
 #define _STRUCTS_
 
 struct Header {
+    PacketOutHeader packet_out;
+    PacketInHeader packet_in;
     Ethernet_h ether;
     VlanTag_h vlan_tag;
     IPv6_h ipv6;
@@ -11,7 +13,7 @@ struct Header {
     UDP_h udp;
 }
 
-struct MacLearnDigest_t {
+struct mac_learn_digest_t {
     EthernetAddress srcAddr;
     PortId_t        ingress_port;
     vlan_id_t       vlan_id;
@@ -19,7 +21,7 @@ struct MacLearnDigest_t {
 
 // Generic ingress metadata (architecture independent)
 struct IngressMetadata {
-    bit<1> is_tagged;
+    bit<1> to_tagging;
     bit<1> flood;
     bit<3> vlan_pcp;
     bit<1> vlan_dei;

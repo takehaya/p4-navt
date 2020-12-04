@@ -1,11 +1,15 @@
 package internal
 
 import (
+	"context"
 	"fmt"
 	"log"
 
 	"github.com/ebiken/gop4d-dev/pkg/config"
+	gop4dlog "github.com/ebiken/gop4d-dev/pkg/log"
 	"github.com/ebiken/gop4d-dev/pkg/utils"
+	"github.com/takehaya/p4-navt/pkg/controller"
+	"go.uber.org/zap"
 
 	"github.com/urfave/cli"
 )
@@ -51,15 +55,53 @@ func run(ctx *cli.Context) error {
 	}
 
 	conf := config.BuildPresetConfig()
-	conf.Gop4dConfig.Bmv2json = "./build.bmv2/main.json"
-	conf.Gop4dConfig.P4info = "./build.bmv2/main.p4.p4info.txt"
-	fmt.Println(grpcaddr)
-	// var cancel context.CancelFunc
-	// sw, err := p4switch.New(conf, &cancel)
-	// if err != nil {
-	// 	log.Fatal("failed")
-	// }
-	// defer cancel()
+	conf.Gop4dConfig.Bmv2json = bmv2json
+	conf.Gop4dConfig.P4info = p4info
+	conf.Gop4dConfig.Grpcaddr = grpcaddr
+	conf.Gop4dConfig.Development = true
+	lvl := zap.NewAtomicLevel()
 
+	logger := gop4dlog.NewLogger(conf, lvl)
+	gop4dlog.SetLogger(&gop4dlog.BaseLogger{Logger: logger})
+
+	err := Main(conf)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Main(c *config.Config) error {
+	var cancel context.CancelFunc
+	sw, err := controller.New(c, &cancel)
+	if err != nil {
+		log.Fatal("failed")
+	}
+	defer cancel()
+
+	//load network config
+	err = sw.LoadConfiguration()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	// L2 Switch Running Exection
+	go func() {
+		if err := sw.L2Switch(); err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+
+	// L3 Switch Running Exection
+	go func() {
+		if err := sw.L3Switch(); err != nil {
+			fmt.Println(err.Error())
+		}
+	}()
+
+	// wait
+	for {
+	}
 	return nil
 }

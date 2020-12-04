@@ -9,9 +9,15 @@ parser SwitchParser(
             inout standard_metadata_t st_md) {
 
     state start {
+        transition select(st_md.ingress_port) {
+            CPU_PORT: parse_packet_out;
+            default: parse_ethernet;
+        }
+    }
+    state parse_packet_out {
+        pkt.extract(hdr.packet_out);
         transition parse_ethernet;
     }
-
     state parse_ethernet {
         pkt.extract(hdr.ether);
         transition select(hdr.ether.etherType) {
@@ -62,6 +68,7 @@ control SwitchDeparser(
             in Header hdr) {
 
     apply {
+        pkt.emit(hdr.packet_in);
         pkt.emit(hdr.ether);
         pkt.emit(hdr.vlan_tag);
         pkt.emit(hdr.ipv6);
